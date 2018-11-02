@@ -9,6 +9,7 @@ from baselines.ddpg.memory import Memory
 from baselines.ddpg.noise import AdaptiveParamNoiseSpec, NormalActionNoise, OrnsteinUhlenbeckActionNoise
 from baselines.common import set_global_seeds
 import baselines.common.tf_util as U
+from baselines.common.tf_util import load_variables, save_variables
 
 from baselines import logger
 import numpy as np
@@ -43,7 +44,7 @@ def learn(network, env,
           eval_env=None,
           param_noise_adaption_interval=50,
           **network_kwargs):
-
+    print("pickchu: nb_rollout_steps", nb_rollout_steps)
     set_global_seeds(seed)
 
     if total_timesteps is not None:
@@ -107,7 +108,7 @@ def learn(network, env,
     if eval_env is not None:
         eval_obs = eval_env.reset()
     nenvs = obs.shape[0]
-
+    print("pickchu!!!!!!!!!!!!!!", obs)
     episode_reward = np.zeros(nenvs, dtype = np.float32) #vector
     episode_step = np.zeros(nenvs, dtype = int) # vector
     episodes = 0 #scalar
@@ -124,14 +125,19 @@ def learn(network, env,
     epoch_actions = []
     epoch_qs = []
     epoch_episodes = 0
+
+    print("!!!!!!!!!!!!!!!!!!!!!!!!!",nb_epochs, nb_epoch_cycles, nb_rollout_steps)
     for epoch in range(nb_epochs):
         for cycle in range(nb_epoch_cycles):
             # Perform rollouts.
+            #print("!!!!!!!!!!!!!!!!!!!!!!!!!111rachu:")
             if nenvs > 1:
                 # if simulating multiple envs in parallel, impossible to reset agent at the end of the episode in each
                 # of the environments, so resetting here instead
                 agent.reset()
+
             for t_rollout in range(nb_rollout_steps):
+                
                 # Predict next action.
                 action, q, _, _ = agent.step(obs, apply_noise=True, compute_Q=True)
 
@@ -141,6 +147,9 @@ def learn(network, env,
 
                 # max_action is of dimension A, whereas action is dimension (nenvs, A) - the multiplication gets broadcasted to the batch
                 new_obs, r, done, info = env.step(max_action * action)  # scale for execution in env (as far as DDPG is concerned, every action is in [-1, 1])
+                #print(len(done))
+                #input("djfksjflksdfjlksdf")
+                
                 # note these outputs are batched from vecenv
 
                 t += 1
@@ -157,17 +166,20 @@ def learn(network, env,
                 obs = new_obs
 
                 for d in range(len(done)):
+                    #print(epoch_episode_steps)
                     if done[d]:
                         # Episode done.
                         epoch_episode_rewards.append(episode_reward[d])
                         episode_rewards_history.append(episode_reward[d])
                         epoch_episode_steps.append(episode_step[d])
+                        #print(epoch_episode_steps)
                         episode_reward[d] = 0.
                         episode_step[d] = 0
                         epoch_episodes += 1
                         episodes += 1
                         if nenvs == 1:
                             agent.reset()
+                #print(t_rollout)
 
 
 
@@ -211,6 +223,7 @@ def learn(network, env,
         else:
             mpi_size = 1
 
+        print("!!!!!!!!!!!!!!!!!!!!!!!!!rachu: epoch_episode_steps", epoch_episode_steps)
         # Log stats.
         # XXX shouldn't call np.mean on variable length lists
         duration = time.time() - start_time
