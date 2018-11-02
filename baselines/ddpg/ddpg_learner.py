@@ -8,6 +8,7 @@ import tensorflow.contrib as tc
 from baselines import logger
 from baselines.common.mpi_adam import MpiAdam
 import baselines.common.tf_util as U
+from baselines.common.tf_util import load_variables, save_variables
 from baselines.common.mpi_running_mean_std import RunningMeanStd
 try:
     from mpi4py import MPI
@@ -400,3 +401,6 @@ class DDPG(object):
             self.sess.run(self.perturb_policy_ops, feed_dict={
                 self.param_noise_stddev: self.param_noise.current_stddev,
             })
+
+    def save(self, path):
+        save_variables(path)
